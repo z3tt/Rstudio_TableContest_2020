@@ -1,6 +1,8 @@
 
 # What do I binge next? An overview of the Top 250 IMDb TV shows
 
+![](./output/IMDb_Top100.png)
+
 ### Packages used:
 
 `gt`, `reticulate`, `dplyr`, `tidyr`, `readr`, `magrittr`, `here`, `glue`, `pkgconfig`
