@@ -1,0 +1,616 @@
+---
+title: "Rstudio Table Contest"
+author: "Cedric Scherer"
+output: tint::tintHtml
+editor_options:
+  chunk_output_type: console
+params:
+  date: !r Sys.Date()
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 1800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, fig.showtext = T, fig.retina = 1)
+```
+
+
+## Setup
+
+```{r prep, message=FALSE, warning=FALSE}
+## R packages
+library(tidyverse)
+library(gt)
+library(here)
+library(glue)
+library(ragg)
+
+## Python libraries
+#py_install("bs4")
+#py_install("requests")
+#py_install("time")
+#py_install("re")
+```
+
+
+## Collect Data
+
+### Scrappe Data from [IMDb's Top 250 TV Shows](https://www.imdb.com/chart/toptv)
+
+```{r source-imdb-data}
+## modified from https://github.com/WittmannF/imdb-tv-ratings/blob/master/IMDB_get_ratings.ipynb
+if(!file.exists(here("data", "top250_allratings.Rds"))) {
+  reticulate::source_python("src/get_imdb_data.py")
+  
+  df_top_series <-
+    all_series %>% 
+    as_tibble() %>% 
+    mutate(rank = row_number())
+  
+  write_rds(df_top_series, here("data", "top250_ratings.Rds"))
+  
+  df_episodes <-
+    ratings_df %>% 
+    all_ratings(rownames = pkgconfig::get_config("tibble::rownames", NULL)) %>% 
+    unnest(cols = c(Season, Episode))
+  
+  write_rds(df_episodes, here("data", "top250_allratings.Rds"))
+} else {
+  df_top_series <- read_rds(here("data", "top250_ratings.Rds"))
+  df_episodes <- read_rds(here("data", "top250_allratings.Rds"))
+}
+```
+
+### Source Data from [IMDb's Interface Database](https://www.imdb.com/interfaces/)
+
+```{r}
+file <- here("data", "title.basics.tsv.gz")
+if (!file.exists(file)) {
+  download.file("https://datasets.imdbws.com/title.basics.tsv.gz", file)
+}
+
+gzfile(file, 'rt')
+
+df_title_basics <- 
+  read_tsv(file, col_types = list(runtimeMinutes = col_double())) %>% 
+  dplyr::select(tconst, originalTitle, runtimeMinutes, genres)
+
+#unlink(file)
+```
+
+### Source [Ranking Data from 2019](https://github.com/WittmannF/imdb-tv-ratings) for Comparison
+
+```{r}
+file <- here("data", "top250list_May2019.csv")
+
+if (!file.exists(file)) {
+  download.file("https://raw.githubusercontent.com/WittmannF/imdb-tv-ratings/master/top250list.csv", 
+                here("data", "top250list_May2019.csv"))
+}
+
+df_data2019 <-
+  read_csv(file) %>% 
+  dplyr::select(code = Code, rank2019 = Rank)
+```
+
+
+## Prepare Data
+
+```{r data-prep}
+df_top250 <-
+  df_top_series %>% 
+  left_join(df_episodes, by = c("code" = "Code")) %>% 
+  mutate(
+    ## clean some titles manually first
+    rating = as.numeric(rating),
+    Rating = as.numeric(Rating),
+    year = as.numeric(str_sub(year, 2, 5)),
+    title = str_replace_all(title, "MisteRogers", "Mister Rogers'"),
+    title = if_else(year == 2010 & title == "Spartacus", 
+                    "Spartacus: Blood and Sand", title),
+    title_id = glue::glue("{title} ({year})")
+  ) %>% 
+  group_by(title_id) %>% 
+  arrange(Season, Episode) %>% 
+  mutate(id = row_number()) %>% 
+  dplyr::select(
+    rank, title, title_id, code,
+    year, id,
+    season = Season,
+    episode = Episode,
+    rating = Rating,
+    rating_avg = rating,
+    rating_count,
+    poster_url
+  ) %>% 
+  arrange(rank, season, episode)
+
+df_top250 <- df_top250 %>% 
+  filter(rank <= 100) 
+```
+
+```{r}
+df_best <-
+  df_top250 %>% 
+  group_by(rank, title, code) %>% 
+  filter(rating == max(rating)) %>% 
+  mutate(best = glue("S{sprintf('%02d', season)}E{sprintf('%02d', episode)}")) %>% 
+  summarize(best = paste0(best, collapse = "<br>")) %>% 
+  mutate(best = glue("<span style='color:#02af74;'>{best}</span>"))
+
+table_data <-
+  df_top250 %>% 
+  ## add additional information: oiginal title, runtime + genres
+  left_join(df_title_basics, by = c("code" = "tconst")) %>% 
+  ## add string with top-rated episodes
+  left_join(df_best) %>% 
+  mutate(best = if_else(is.na(best), glue("<i style='color:#ff8176;'>n.a.</i>"), best)) %>% 
+  ## add data from 2019 for comparison
+  left_join(df_data2019) %>% 
+  mutate(diff = rank2019 - rank) %>%
+  ## add missing genres and runtimes
+  mutate(
+    genres = case_when(
+      ## ACTION
+      title_id %in% c("Spartacus: Gods of the Arena (2011)") ~ 
+        "Action,Adventure,Biography",
+      title_id %in% c("Justified (2010)") ~ 
+        "Action,Crime,Drama",
+      title_id %in% c("Aranyélet (2015)") ~ 
+        "Action,Drama,Thriller",
+      ## ANIMATION
+      title_id %in% c("Attack on Titan (2013)", "Vinland Saga (2019)", "Justice League Unlimited (2004)") ~ 
+        "Animation,Action,Adventure",
+      title_id %in% c("One Punch Man (2015)") ~ 
+        "Animation,Action,Comedy",
+      title_id %in% c("Demon Slayer: Kimetsu No Yaiba (2019)", "Archer (2009)") ~ 
+        "Animation,Action,Comedy",
+      title_id %in% c("Rick and Morty (2013)") ~ 
+        "Animation,Adventure,Comedy",
+      title_id %in% c("Over the Garden Wall (2014)") ~ 
+        "Animation,Adventure,Drama",
+      title_id %in% c("The Bugs Bunny Show (1960)", "The Bugs Bunny/Road Runner Hour (1968)") ~ 
+        "Animation,Comedy",
+      title_id %in% c("Death Note (2006)") ~ 
+        "Animation,Crime,Drama",
+      title_id %in% c("Erased (2016)") ~ 
+        "Animation,Drama,Fantasy",
+      ## BIOGRAPHY
+      title_id %in% c("SCAM 1992: The Harshad Mehta Story (2020)", "Narcos (2015)") ~ 
+        "Biography,Crime,Drama",
+      title_id %in% c("Bose: Dead/Alive (2017)") ~ 
+        "Biography,History,Mystery",
+      ## COMEDY
+      title_id %in% c("Monty Python's Flying Circus (1969)", "Fawlty Towers (1975)", "Detectorists (2014)", "Silicon Valley (2014)") ~ 
+        "Comedy",
+      title_id %in% c("Alfred Hitchcock Presents (1955)") ~ 
+        "Comedy,Crime,Drama",
+      title_id %in% c("TVF Pitchers (2015)", "Fleabag (2016)", "The Marvelous Mrs. Maisel (2017)", "Louie (2010)", "Horace and Pete (2016)") ~ 
+        "Comedy,Drama",
+      title_id %in% c("Inside No. 9 (2014)") ~ 
+        "Comedy,Drama,Horror",
+      title_id %in% c("This Is Us (2016)") ~ 
+        "Comedy,Drama,Romance",
+      title_id %in% c("The Grand Tour (2016)") ~ 
+        "Comedy,TV-Show",
+      ## CRIME
+      title_id %in% c("Twin Peaks (2017)") ~ 
+        "Crime,Drama,Fantasy",
+      title_id %in% c("Persona (2018)", "Endeavour (2012)", "Big Little Lies (2017)") ~ 
+        "Crime,Drama,Mystery",
+      title_id %in% c("Breaking Bad (2008)", "Senke nad Balkanom (2017)", "Gomorrah (2014)", "Mindhunter (2017)", "Mr. Robot (2015)", "Ezel (2009)") ~ 
+        "Crime,Drama,Thriller",
+      ## DOCUMENTARY
+      title_id %in% c("Planet Earth II (2016)", "Blue Planet II (2017)", "Life (2009)", "Chef's Table (2015)") ~ 
+        "Documentary",
+      title_id %in% c("The Defiant Ones (2017)") ~ 
+        "Documentary,Biography,Crime",
+      title_id %in% c("The Last Dance (2020)") ~ 
+        "Documentary,Biography,History",
+      title_id %in% c("The Jinx: The Life and Deaths of Robert Durst (2015)") ~ 
+        "Documentary,Crime",
+      title_id %in% c("Content Cop (2015)") ~ 
+        "Documentary,Comedy,Crime",
+      title_id %in% c("The World at War (1973)") ~ 
+        "Documentary,History,War",
+      ## DRAMA
+      title_id %in% c("Succession (2018)") ~ 
+        "Drama",
+      title_id %in% c("The Twilight Zone (1959)") ~ 
+        "Drama,Fantasy,Horror",
+      title_id %in% c("The Haunting of Hill House (2018)") ~ 
+        "Drama,Horror,Mystery",
+      title_id %in% c("Skam (2015)", "Normal People (2020)") ~ 
+        "Drama,Romance",
+      ## MISC
+      title_id %in% c("Mister Rogers' Neighborhood (1968)") ~ 
+        "Family,Fantasy,Music",
+      title_id %in% c("Queer Eye (2018)") ~
+        "Reality-TV",
+      TRUE ~ genres
+    ),
+    runtimeMinutes = case_when(
+      title_id %in% c("Ezel (2009)") ~ 90,
+      title_id %in% c("Endeavour (2012)") ~ 89,
+      title_id %in% c("Horace and Pete (2016)") ~ 67,
+      title_id %in% c("Persona (2018)") ~ 65,
+      title_id %in% c("Senke nad Balkanom (2017)", "The Grand Tour (2016)", "Aranyélet (2015)", "Mindhunter (2017)", "Succession (2018)", "Twin Peaks (2017)", "The Defiant Ones (2017)", "Big Little Lies (2017)") ~ 60,
+      title_id %in% c("The Marvelous Mrs. Maisel (2017)", "The Haunting of Hill House (2018)") ~ 57,
+      title_id %in% c("Gomorrah (2014)", "The Bugs Bunny/Road Runner Hour (1968)", "Spartacus: Gods of the Arena (2011)") ~ 55,
+      title_id %in% c("Blue Planet II (2017)", "The World at War (1973)") ~ 52,
+      title_id %in% c("The Twilight Zone (1959)") ~ 51,
+      title_id %in% c("Planet Earth II (2016)", "Chef's Table (2015)") ~ 50,
+      title_id %in% c("Breaking Bad (2008)", "The Last Dance (2020)", "Narcos (2015)", "Mr. Robot (2015)") ~ 49,
+      title_id %in% c("Life (2009)", "The Jinx: The Life and Deaths of Robert Durst (2015)") ~ 47,
+      title_id %in% c("This Is Us (2016)", "Queer Eye (2018)") ~ 45,
+      title_id %in% c("Justified (2010)") ~ 44,
+      title_id %in% c("TVF Pitchers (2015)") ~ 40,
+      title_id %in% c("Monty Python's Flying Circus (1969)", "Fawlty Towers (1975)", "Mister Rogers' Neighborhood (1968)", "The Bugs Bunny Show (1960)", "Skam (2015)", "Detectorists (2014)", "Erased (2016)", "Inside No. 9 (2014)") ~ 30,
+      title_id %in% c("Silicon Valley (2014)") ~ 28,
+      title_id %in% c("Fleabag (2016)") ~ 27,
+      title_id %in% c("Demon Slayer: Kimetsu No Yaiba (2019)", "Alfred Hitchcock Presents (1955)") ~ 25,
+      title_id %in% c("Death Note (2006)", "Attack on Titan (2013)", "One Punch Man (2015)", "Vinland Saga (2019)") ~ 24,
+      title_id %in% c("Rick and Morty (2013)", "Justice League Unlimited (2004)") ~ 23,
+      title_id %in% c("Archer (2009)", "Louie (2010)") ~ 22,
+      title_id %in% c("Content Cop (2015)", "Bose: Dead/Alive (2017)") ~ 20,
+      title_id %in% c("Normal People (2020)") ~ 16,
+      title_id %in% c("Over the Garden Wall (2014)") ~ 11,
+      TRUE ~ runtimeMinutes
+    )
+  ) %>% 
+  group_by(code) %>% 
+  mutate(
+    ## correct runtime if time is voerall runtime not runtime per episode
+    runtime = if_else(runtimeMinutes > 120 & title != "Critical Role", 
+                      round(runtimeMinutes / n(), 0), 
+                      runtimeMinutes),
+    ## clean primary and original title
+    title = str_replace_all(title, "\\s+and\\s+", " & "),
+    title = str_replace_all(title, "'", "’"),
+    originalTitle = if_else(is.na(originalTitle), "x", originalTitle),
+    originalTitle = str_replace_all(originalTitle, "\\s+and\\s+", " & "),
+    originalTitle = str_replace_all(originalTitle, "'", "’"),
+    ## only add original title in case primary title != original title
+    originalTitle = if_else(
+      originalTitle %in% c(title, "x", "Only Fools and Horses....", "The X Files", "North & South", "Love, Death & Robots"), 
+      glue::glue(""), 
+      glue::glue("({originalTitle})")
+    ),
+    title = glue::glue("<div style='line-height:.85;'><b style='font-size:14px;'>{title}</b><span style='color:grey;font-size:9px;'>&nbsp;&nbsp;({year})</span><br><span style='color:grey;font-size:9px;'>{originalTitle}</span></div>"),
+    ## nicely formatted genre list
+    genres = if_else(is.na(genres), 
+                     "<i>not available</i>", 
+                     str_replace_all(genres, "\\,", "<br>")),
+    ## to add stars to ratings we (mis)use suffixing as a trick
+    rating_avg = rating_avg * 1000,
+    ## overview of total number of seasons and episodes
+    season_count = max(season),
+    counts = case_when(
+      season_count == 1 ~ glue("1 season  <br>{max(id)} episodes"),
+      season_count > 1 ~ glue("{season_count} seasons <br>{max(id)} episodes"),
+      is.na(season_count) ~ glue("<i style='color:#ff8176;'>not available</i>")
+    ),
+    ## nicely formatted rank difference to 2019
+    change = case_when(
+      diff > 0 ~ glue("<span style='color:#02af74;'>&uarr;+{diff}</span>"),
+      diff < 0 ~ glue("<span style='color:#ffa500;'>&darr;{diff}</span>"),
+      diff == 0 ~ glue("<span style='color:#b3b3b3;'>&bull;</span>"),
+      is.na(rank2019) ~ glue("<span style='color:#9602c8;'>NEW!</span>")
+    )
+  ) %>% 
+  group_by(title_id, rank) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  arrange(rank) %>% 
+  dplyr::select(
+    rank,
+    change,
+    poster_url,
+    title,
+    runtime,
+    genres,
+    rating_avg,
+    votes = rating_count,
+    counts,
+    best
+  )
+```
+
+
+## Plots
+
+### Rating Stripes
+
+```{r plot-trends}
+plot_trends <- function(data){
+  n <- data %>% filter(id %% 50 == 0) %>% pull(id)
+  n <- c(n, 0)
+  
+  rect <- tibble(x1 = c(-Inf, max(data$id)), x2 = c(1, Inf), y1 = -Inf, y2 = Inf)
+  
+  g <- data %>% 
+    ggplot(aes(x = id, y = .5, fill = rating_norm)) +
+    geom_tile(color = "transparent") +
+    geom_step(aes(x = id + .5, y = rating_season), color = "grey20", size = 10) +
+    geom_step(aes(x = id + .5, y = rating_season), color = "white", size = 6) +
+    geom_rect(data = rect, aes(xmin = x1, xmax = x2, ymin = y1, ymax = y2),
+              inherit.aes = FALSE,
+              color = "transparent", fill = "white") +
+    scale_x_continuous(expand = c(.0, 0), breaks = c(n, 0), labels = c(as.character(n), ""),
+                       limits = c(1, unique(data$max_x))) +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1.05)) +
+    # scale_x_continuous(breaks = n, , labels = c(as.character(n), ""),
+    #                    limits = c(1, unique(data$max_x))) +
+    # scale_y_continuous(expand = c(0, 0), limits = c(0, 1.18)) +
+    scale_fill_gradient2(
+      low = "#ffa500", mid = "grey90", high = "#02af74",
+      midpoint = unique(data$avg),
+      na.value = "transparent"
+    ) +
+    theme_void() +
+    theme(legend.position = "none",
+          axis.text.x = element_text(color = "grey60", size = 40, margin = margin(t = 10)))
+  
+  # if (unique(data$maxID) > 1) {
+  #   g <- g +
+  #   geom_point(data = data %>% filter(rating_norm == 1), aes(x = id, y = 1.1),
+  #              shape = 25, color = "#02af74", fill = "transparent", size = 15, stroke = 4) +
+  #   geom_point(data = data %>% filter(rating_norm == 0), aes(x = id, y = 1.1),
+  #              shape = 25, color = "#ffa500", fill = "transparent", size = 15, stroke = 4)
+  # }
+  
+  if (unique(data$title) == "The Simpsons") {
+    g <- g + annotate(
+      "text", x = 5, y = .35, color = "grey40", size = 26,
+      fontface = "bold", lineheight = .9, hjust = 0,
+      label = "There are too many episodes of “The Simpsons” to show them all.\nBut they are only getting worse anyway...")
+  }
+  g
+}
+
+table_trends <-
+  df_top250 %>% 
+  group_by(title_id) %>% 
+  mutate(id = row_number()) %>% 
+  group_by(title_id, season) %>% 
+  mutate(rating_season = mean(rating, na.rm = TRUE) / 10) %>% 
+  group_by(title_id) %>% 
+  mutate(
+    maxID = max(id),
+    avg = (mean(rating, na.rm = TRUE) - min(rating, na.rm = TRUE)) / (max(rating, na.rm = TRUE) - min(rating, na.rm = TRUE)),
+    rating_norm_season = (rating_season - min(rating, na.rm = TRUE)) / (max(rating, na.rm = TRUE) - min(rating, na.rm = TRUE)),
+    rating_norm = (rating - min(rating, na.rm = TRUE)) / (max(rating, na.rm = TRUE) - min(rating, na.rm = TRUE)),
+    rating_norm = if_else(maxID == 1, .5, rating_norm)
+  ) %>% 
+  ungroup() %>% 
+  mutate(max_x = max(maxID[which(maxID < 400)])) %>% 
+  nest(ratings = c(-title_id, -rank)) %>% 
+  mutate(plot = map(ratings, plot_trends)) %>% 
+  arrange(rank)
+```
+
+### Runtime as Circles
+
+```{r plot-runtime}
+plot_runtime <- function(data){
+  data %>% 
+    ggplot(aes(x = 1, y = 1, color = runtime)) +
+    geom_point(aes(size = runtime), shape = 21, stroke = 7) +
+    geom_text(
+      aes(label = runtime_lab),
+      size = 25,
+      family = "Overpass Mono",
+      fontface = "bold"
+    ) +
+    coord_cartesian(clip = "off") +
+    scale_y_continuous(limits = c(.9, 1.13)) +
+    scale_color_gradient(
+      low = "grey65", high = "grey40", 
+      limits = c(data$runtime_min, data$runtime_max),
+      na.value = "#ff8176"
+    ) +
+    scale_size(
+      range = c(60, 140), 
+      limits = c(data$runtime_min, data$runtime_max)
+    ) +
+    theme_void() +
+    theme(legend.position = "none")
+}
+
+table_runtime <-
+  table_data %>% 
+  dplyr::select(rank, title, runtime) %>% 
+  mutate(
+    runtime_min = if_else(is.na(runtime), NA_real_, min(runtime, na.rm = TRUE)),
+    runtime_max = if_else(is.na(runtime), NA_real_, max(runtime, na.rm = TRUE)),
+    runtime_lab = if_else(is.na(runtime), "n.a.", as.character(runtime))
+  ) %>%
+  nest(ratings = c(-rank)) %>% 
+  mutate(plot = map(ratings, plot_runtime))
+```
+<br><br>
+
+## Tablelize It!
+
+```{r gt-table}
+imdb_table <- 
+  table_data %>% 
+  mutate(trends = NA) %>%  
+  gt() %>% 
+  ## COLORS --------------------------------------------------------------------
+  data_color(
+    columns = vars(rating_avg),
+    colors = scales::col_numeric(
+      palette = rev(rcartocolor::carto_pal(n = 7, name = "ag_GrnYl")),
+      domain = NULL
+    )
+  ) %>% 
+  ## PLOTS ---------------------------------------------------------------------
+  text_transform(
+      locations = cells_body(vars(trends)),
+      fn = function(x){
+             map(table_trends$plot, ggplot_image, height = px(50), aspect_ratio = 9)
+      }
+  ) %>%
+  text_transform(
+      locations = cells_body(vars(runtime)),
+      fn = function(x){
+             map(table_runtime$plot, ggplot_image, height = px(50), aspect_ratio = 1)
+      }
+  ) %>%
+  ## IMAGES --------------------------------------------------------------------
+  text_transform(
+    locations = cells_body(vars(poster_url)),
+    fn = function(x){
+      web_image(url = x, height = px(50))
+    }
+  ) %>% 
+  ## STYLE ---------------------------------------------------------------------
+  fmt_markdown(columns = c("change", "title", "genres", "counts", "best")) %>%
+  fmt_number(columns = c("rating_avg"), decimals = 1, suffixing = c(" ⭐")) %>%
+  opt_table_font(
+    font = list(
+      google_font("Roboto Condensed"),
+      google_font("Bitter"),
+      google_font("Overpass Mono"),
+      google_font("Alegreya Sans SC"),
+      default_fonts()
+    )
+  ) %>% 
+  ## Titles & Co.
+  tab_header(
+    title = md("**What do I binge next?** An detailed overview of the Top 250 TV shows as rated by IMDb users")
+  ) %>% 
+  tab_source_note(
+    source_note = md("**Table: Cédric Scherer &bull; Data: IMDb.com**<span style='font-size:7pt;color:grey;'> (Last updated on Oct 26<sup>th</sup> 2020)</span>")
+  ) %>%
+  tab_footnote(
+    footnote = md(glue("The line shows the average IMDb rating per season as the series progresses. Each vertical stripe represents one episode colored by the difference to the series' average (normalized). The plots are scaled to a maximum of {unique(table_trends$ratings[[1]]$max_x)} episodes; out of the top 250 only “The Simpsons” crossed that mark.<br>Ranks are compared to a dataset of the IMDb Top 250 TV series from May 2019.")),
+    locations = cells_column_labels(columns = vars(trends))
+  ) %>%
+  ## Column Names
+  cols_label(
+    rank = "",
+    change = "",
+    poster_url = "",
+    title = html("<span style='line-height:.85;'>Title<span style='font-size:9pt;color:grey;font-weight:400;'>&nbsp;&nbsp;(Start Year)</span></span>"),
+    runtime = "Runtime",
+    genres = "Genres",
+    rating_avg = "Rating",
+    votes = "Votes",
+    counts = "Overview",
+    best = html("<span style='line-height:.85;'>Top–Rated</span>"),
+    trends = html("<span style='line-height:.65;'>Rating Trends:<br><i style='color:grey;font-weight:400;'>Are episodes <b style='color:#ffa500;'>worse</b> or <b style='color:#02af74;'>better</b> than the series’ average? </i></span>")
+  ) %>%
+  ## Column widths
+  cols_width(
+    vars(rank) ~ px(20),
+    vars(change) ~ px(40),
+    vars(poster_url) ~ px(50),
+    vars(title) ~ px(300),
+    #vars(runtime) ~ px(75),
+    vars(genres) ~ px(85),
+    vars(rating_avg) ~ px(90),
+    #vars(votes) ~ px(55),
+    vars(best) ~ px(90),
+    vars(trends) ~ px(450)
+  ) %>%
+  ## Header Font
+  tab_style(
+    style = list(cell_text(font = "Alegreya Sans SC", weight = "bold", 
+                           color = "grey20", align = "center", v_align = "middle")),
+    locations = list(cells_column_labels(gt::everything()))
+  ) %>%
+  tab_style(
+    style = list(cell_text(font = "Roboto Condensed", align = "left")),
+    locations = list(cells_title(groups = c("title")))
+  ) %>%
+  tab_style(
+    style = list(cell_text(align = "left")),
+    locations = list(cells_column_labels(c("title", "genres", "trends")))
+  ) %>%
+  tab_style(
+    style = list(cell_text(align = "right")),
+    locations = list(cells_column_labels(c("votes", "counts")))
+  ) %>%
+  ## Rank column
+  tab_style(
+    style = list(cell_text(font = "Overpass Mono", size = "small", align = "right")),
+    location = list(cells_body(columns = vars(rank)))
+  ) %>%
+  ## Change Column
+  tab_style(
+    style = list(cell_text(font = "Overpass Mono", size = "x-small", align = "center")),
+    location = list(cells_body(columns = vars(change)))
+  ) %>%
+  ## Title Column
+  tab_style(
+    style = list(cell_text(font = "Bitter", align = "left")),
+    location = list(cells_body(columns = vars(title)))
+  ) %>%
+  ## Runtime Column
+  tab_style(
+    style = list(cell_text(font = "Roboto Condensed", align = "center")),
+    location = list(cells_body(columns = vars(runtime)))
+  ) %>%
+  ## Genres Column
+  tab_style(
+    style = list(cell_text(font = "Roboto Condensed", size = "x-small", color = "grey", align = "left")),
+    location = list(cells_body(columns = vars(genres)))
+  ) %>%
+  ## Rating Column
+  tab_style(
+    style = list(cell_text(font = "Overpass Mono", size = "small", weight = "bold", align = "center")),
+    location = list(cells_body(columns = vars(rating_avg)))
+  ) %>%
+  ## Votes Column
+  tab_style(
+    style = list(cell_text(font = "Roboto Condensed", size = "x-small", align = "right", color = "grey")),
+    location = list(cells_body(columns = vars(votes)))
+  ) %>%
+  ## Overview Column
+  tab_style(
+    style = list(cell_text(font = "Roboto Condensed", size = "x-small", align = "right", color = "grey")),
+    location = list(cells_body(columns = vars(counts)))
+  ) %>%
+  ## Top–Rated Column
+  tab_style(
+    style = list(cell_text(font = "Roboto Condensed", size = "x-small", align = "center")),
+    location = list(cells_body(columns = vars(best)))
+  ) %>% 
+  tab_options(
+    heading.align = "left",
+    heading.title.font.size = 20,
+    source_notes.font.size = 13,
+    footnotes.font.size = 11,
+    table.border.top.color = "transparent",
+    table.border.bottom.color = "black",
+    table.border.bottom.width = px(3),
+    column_labels.border.top.width = px(3),
+    column_labels.border.top.color = "black",
+    table_body.hlines.color = "#ededed"
+  )
+
+imdb_table
+```
+<br><br>
+
+```{r save-table}
+#gtsave(imdb_table, "outpu/MDb_Top250.html", inline_css = TRUE)
+#gtsave(imdb_table, "outpu/IMDb_Top250.png", expand = 20)
+```
+
+***
+
+```{r session}
+Sys.time()
+git2r::repository()
+sessionInfo()
+```
