@@ -1,7 +1,7 @@
 ---
-title: "Rstudio Table Contest"
-author: "Cedric Scherer"
-output: tint::tintHtml
+title: "Rstudio Table Contest: An Detailed Overview of the Top 250 TV Shows as Rated by IMDb Users"
+author: "Cédric Scherer"
+output: hrbrthemes::ipsum
 editor_options:
   chunk_output_type: console
 params:
@@ -22,6 +22,8 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, fig.showtext = T, fig.retina
 ```
 
 
+<br>
+
 ## Setup
 
 ```{r prep, message=FALSE, warning=FALSE}
@@ -39,6 +41,7 @@ library(ragg)
 #py_install("re")
 ```
 
+<br>
 
 ## Collect Data
 
@@ -68,6 +71,8 @@ if(!file.exists(here("data", "top250_allratings.Rds"))) {
 }
 ```
 
+<br>
+
 ### Source Data from [IMDb's Interface Database](https://www.imdb.com/interfaces/)
 
 ```{r}
@@ -85,6 +90,8 @@ df_title_basics <-
 #unlink(file)
 ```
 
+<br>
+
 ### Source [Ranking Data from 2019](https://github.com/WittmannF/imdb-tv-ratings) for Comparison
 
 ```{r}
@@ -100,10 +107,11 @@ df_data2019 <-
   dplyr::select(code = Code, rank2019 = Rank)
 ```
 
+<br>
 
 ## Prepare Data
 
-```{r data-prep}
+```{r data-prep-episodes}
 df_top250 <-
   df_top_series %>% 
   left_join(df_episodes, by = c("code" = "Code")) %>% 
@@ -132,11 +140,15 @@ df_top250 <-
   ) %>% 
   arrange(rank, season, episode)
 
-df_top250 <- df_top250 %>% 
-  filter(rank <= 100) 
+#df_top250 <- df_top250 %>% 
+  ## filter by rank
+  #filter(rank <= 50)
+  ## filter by genre
+  #left_join(df_title_basics, by = c("code" = "tconst")) %>% 
+  #filter(str_detect(genres, "Drama"))
 ```
 
-```{r}
+```{r data-prep-series-table}
 df_best <-
   df_top250 %>% 
   group_by(rank, title, code) %>% 
@@ -324,7 +336,11 @@ table_data <-
 ```
 
 
+<br>
+
 ## Plots
+
+<br>
 
 ### Rating Stripes
 
@@ -396,6 +412,8 @@ table_trends <-
   arrange(rank)
 ```
 
+<br>
+
 ### Runtime as Circles
 
 ```{r plot-runtime}
@@ -435,7 +453,8 @@ table_runtime <-
   nest(ratings = c(-rank)) %>% 
   mutate(plot = map(ratings, plot_runtime))
 ```
-<br><br>
+
+<br>
 
 ## Tablelize It!
 
@@ -492,7 +511,7 @@ imdb_table <-
     source_note = md("**Table: Cédric Scherer &bull; Data: IMDb.com**<span style='font-size:7pt;color:grey;'> (Last updated on Oct 26<sup>th</sup> 2020)</span>")
   ) %>%
   tab_footnote(
-    footnote = md(glue("The line shows the average IMDb rating per season as the series progresses. Each vertical stripe represents one episode colored by the difference to the series' average (normalized). The plots are scaled to a maximum of {unique(table_trends$ratings[[1]]$max_x)} episodes; out of the top 250 only “The Simpsons” crossed that mark.<br>Ranks are compared to a dataset of the IMDb Top 250 TV series from May 2019.")),
+    footnote = md(glue("The line shows the average IMDb rating per season as the show progresses. Each vertical stripe represents one episode colored by the difference to the show' average (normalized). The plots are scaled to a maximum of {unique(table_trends$ratings[[1]]$max_x)} episodes; out of the top 250 only “The Simpsons” crossed that mark.<br>Ranks are compared to a dataset of the IMDb Top 250 TV shows from May 2019.")),
     locations = cells_column_labels(columns = vars(trends))
   ) %>%
   ## Column Names
@@ -507,7 +526,7 @@ imdb_table <-
     votes = "Votes",
     counts = "Overview",
     best = html("<span style='line-height:.85;'>Top–Rated</span>"),
-    trends = html("<span style='line-height:.65;'>Rating Trends:<br><i style='color:grey;font-weight:400;'>Are episodes <b style='color:#ffa500;'>worse</b> or <b style='color:#02af74;'>better</b> than the series’ average? </i></span>")
+    trends = html("<span style='line-height:.65;'>Rating Trends:<br><i style='color:grey;font-weight:400;'>Are episodes <b style='color:#ffa500;'>worse</b> or <b style='color:#02af74;'>better</b> than the show’s <b style='color:#d1d1d1;'>average</b>? </i></span>")
   ) %>%
   ## Column widths
   cols_width(
@@ -519,7 +538,8 @@ imdb_table <-
     vars(genres) ~ px(85),
     vars(rating_avg) ~ px(90),
     #vars(votes) ~ px(55),
-    vars(best) ~ px(90),
+    #vars(counts) ~ px(55),
+    vars(best) ~ px(95),
     vars(trends) ~ px(450)
   ) %>%
   ## Header Font
@@ -586,6 +606,7 @@ imdb_table <-
     location = list(cells_body(columns = vars(best)))
   ) %>% 
   tab_options(
+    #table.width = px(1800),
     heading.align = "left",
     heading.title.font.size = 20,
     source_notes.font.size = 13,
@@ -598,14 +619,81 @@ imdb_table <-
     table_body.hlines.color = "#ededed"
   )
 
-imdb_table
+#imdb_table
 ```
-<br><br>
+
+### Save Table
 
 ```{r save-table}
-#gtsave(imdb_table, "outpu/MDb_Top250.html", inline_css = TRUE)
-#gtsave(imdb_table, "outpu/IMDb_Top250.png", expand = 20)
+#gtsave(imdb_table, "IMDb_Top250.html", inline_css = TRUE)
+#gtsave(imdb_table, "IMDb_Top250.png", expand = 20)
+#gtsave(imdb_table, "IMDb_Top250.png", vwidth = 2600, vheight = 18000, zoom = 2, delay = 10)
 ```
+
+
+<br>
+
+## And here they are... The Best TV Shows!
+
+### By Rank
+
+<br>
+
+<details>
+<summary style='font-weight:600;'>Top 250</summary>
+![](./output/IMDb_Top250.png)
+</details>
+
+<br>
+
+<details>
+<summary style='font-weight:600;'>Top 100</summary>
+![](./output/IMDb_Top100.png)
+</details>
+
+<br>
+
+<details>
+<summary style='font-weight:600;'>Top 50</summary>
+![](./output/IMDb_Top50.png)
+</details>
+
+<br>
+
+### By Genre
+
+<details>
+<summary style='font-weight:600;'>Top Documentaries</summary>
+![](./output/IMDb_TopDocumentary.png)
+</details>
+
+<br>
+
+<details>
+<summary style='font-weight:600;'>Top Animated Shows</summary>
+![](./output/IMDb_TopAnimation.png)
+</details>
+
+<br>
+
+<details>
+<summary style='font-weight:600;'>Top Comedy Shows</summary>
+![](./output/IMDb_TopComedy.png)
+</details>
+
+<br>
+
+<details>
+<summary style='font-weight:600;'>Top Drama Shows</summary>
+![](./output/IMDb_TopDrama.png)
+
+<br>
+
+<details>
+<summary style='font-weight:600;'>Top Action Shows</summary>
+![](./output/IMDb_TopAction.png)
+
+<br>
 
 ***
 
