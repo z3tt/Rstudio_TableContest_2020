@@ -3,13 +3,13 @@
 
 The table shows relevant details of the top 250 TV shows as rated by IMDb users. I focussed on displaying the details I and my friends care about: of course the ranking and overall rating but additionally the runtime per episode, genres, number of seasons and episodes, ID of the best episodes. But most importantly—the trend of ratings as the TV show progresses.
 
-### Top 250:
+## Top 250:
 ![](./output/IMDb_Top250.png)
 
-### Documentaries:
+## Documentaries only:
 ![](./output/IMDb_TopDocumentary.png)
 
-### Other Versions by Rank
+### Other Versions by Rank:
 
 <details>
   <summary>Top 50</summary>
@@ -21,7 +21,7 @@ The table shows relevant details of the top 250 TV shows as rated by IMDb users.
   <img src="./output/IMDb_Top100.png"/>
 </details>
 
-#### Other Versions by Genres:
+### Other Versions by Genres:
 
 <details>
   <summary>Animation</summary>
@@ -43,11 +43,11 @@ The table shows relevant details of the top 250 TV shows as rated by IMDb users.
   <img src="./output/IMDb_TopAction.png"/>
 </details>
 
-### Packages used:
+## Packages used:
 
 `gt`, `reticulate`, `dplyr`, `tidyr`, `readr`, `magrittr`, `here`, `glue`, `pkgconfig`
 
-### Details:
+## Details:
 
 **Visualizations:** To visualize the runtime I decided to use a restrained, grey-toned, area-scaled circle. The normalized trends in episode ratings are visualized as stripes similar to the famous ["warming stripes" by Ed Hawkins](https://en.wikipedia.org/wiki/Warming_stripes). In addition, a line indicates the average rating per season on a range from 1 to 10.
 
