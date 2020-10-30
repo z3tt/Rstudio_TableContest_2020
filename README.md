@@ -1,43 +1,42 @@
 
 # What do I binge next? An overview of the Best IMDb TV shows
 
+**Top 50:**
 ![](./output/IMDb_Top50.png)
 
 <details>
-<summary>Top 250</summary>
-![](./output/IMDb_Top250.png)
+  <summary>Top 100</summary>
+  <img src="./output/IMDb_Top100.png"/>
 </details>
 
 <details>
-<summary>Top 100</summary>
-![](./output/IMDb_Top100.png)
+  <summary>Top 250</summary>
+  <img src="./output/IMDb_Top250.png"/>
 </details>
 
 #### Filtered by Genres:
 
-<details>
-<summary>Documentary</summary>
+**Documentary:**
 ![](./output/IMDb_TopDocumentary.png)
+
+<details>
+  <summary>Animation</summary>
+  <img src="./output/IMDb_TopAnimation.png"/>
 </details>
 
 <details>
-<summary>Animation</summary>
-![](./output/IMDb_TopAnimation.png)
+  <summary>Comedy</summary>
+  <img src="./output/IMDb_TopComedy.png"/>
 </details>
 
 <details>
-<summary>Comedy</summary>
-![](./output/IMDb_TopComedy.png)
+  <summary>Drama</summary>
+  <img src="./output/IMDb_TopDramay.png"/>
 </details>
 
 <details>
-<summary>Drama</summary>
-![](./output/IMDb_TopDrama.png)
-</details>
-
-<details>
-<summary>Action</summary>
-![](./output/IMDb_TopAction.png)
+  <summary>Action</summary>
+  <img src="./output/IMDb_TopAction.png"/>
 </details>
 
 ### Packages used:
