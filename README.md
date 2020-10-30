@@ -47,7 +47,7 @@ The table shows relevant details of the top 250 TV shows as rated by IMDb users.
 
 `gt`, `reticulate`, `dplyr`, `tidyr`, `readr`, `magrittr`, `here`, `glue`, `pkgconfig`
 
-### Description:
+### Details:
 
 **Visualizations:** To visualize the runtime I decided to use a restrained, grey-toned, area-scaled circle. The normalized trends in episode ratings are visualized as stripes similar to the famous ["warming stripes" by Ed Hawkins](https://en.wikipedia.org/wiki/Warming_stripes). In addition, a line indicates the average rating per season on a range from 1 to 10.
 
