@@ -37,3 +37,6 @@ vignettes/*.pdf
 
 # Data
 /data/title.basics*
+
+# Data Backups
+/data/20201019/*
