@@ -625,6 +625,8 @@ imdb_table <-
 ### Save Table
 
 ```{r save-table}
+#imdb_table %>% as_raw_html(inline_css = TRUE)
+#gtsave(imdb_table, "IMDb_Top250.pdf")
 #gtsave(imdb_table, "IMDb_Top250.html", inline_css = TRUE)
 #gtsave(imdb_table, "IMDb_Top250.png", expand = 20)
 #gtsave(imdb_table, "IMDb_Top250.png", vwidth = 2600, vheight = 18000, zoom = 2, delay = 10)
@@ -639,10 +641,8 @@ imdb_table <-
 
 <br>
 
-<details>
 <summary style='font-weight:600;'>Top 250</summary>
 ![](./output/IMDb_Top250.png)
-</details>
 
 <br>
 
@@ -662,10 +662,8 @@ imdb_table <-
 
 ### By Genre
 
-<details>
 <summary style='font-weight:600;'>Top Documentaries</summary>
 ![](./output/IMDb_TopDocumentary.png)
-</details>
 
 <br>
 
