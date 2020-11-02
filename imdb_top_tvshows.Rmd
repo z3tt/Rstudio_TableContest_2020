@@ -60,8 +60,8 @@ if(!file.exists(here("data", "top250_allratings.Rds"))) {
   write_rds(df_top_series, here("data", "top250_ratings.Rds"))
   
   df_episodes <-
-    ratings_df %>% 
-    all_ratings(rownames = pkgconfig::get_config("tibble::rownames", NULL)) %>% 
+    all_ratings %>% 
+    as_tibble(rownames = pkgconfig::get_config("tibble::rownames", NULL)) %>% 
     unnest(cols = c(Season, Episode))
   
   write_rds(df_episodes, here("data", "top250_allratings.Rds"))
@@ -142,7 +142,7 @@ df_top250 <-
 
 #df_top250 <- df_top250 %>% 
   ## filter by rank
-  #filter(rank <= 50)
+  #filter(rank <= 100)
   ## filter by genre
   #left_join(df_title_basics, by = c("code" = "tconst")) %>% 
   #filter(str_detect(genres, "Drama"))
@@ -208,7 +208,7 @@ table_data <-
         "Comedy,Drama",
       title_id %in% c("Inside No. 9 (2014)") ~ 
         "Comedy,Drama,Horror",
-      title_id %in% c("This Is Us (2016)") ~ 
+      title_id %in% c("This Is Us (2016)", "Flames (2018)") ~ 
         "Comedy,Drama,Romance",
       title_id %in% c("The Grand Tour (2016)") ~ 
         "Comedy,TV-Show",
@@ -271,7 +271,7 @@ table_data <-
       title_id %in% c("Death Note (2006)", "Attack on Titan (2013)", "One Punch Man (2015)", "Vinland Saga (2019)") ~ 24,
       title_id %in% c("Rick and Morty (2013)", "Justice League Unlimited (2004)") ~ 23,
       title_id %in% c("Archer (2009)", "Louie (2010)") ~ 22,
-      title_id %in% c("Content Cop (2015)", "Bose: Dead/Alive (2017)") ~ 20,
+      title_id %in% c("Content Cop (2015)", "Bose: Dead/Alive (2017)", "Flames (2018)") ~ 20,
       title_id %in% c("Normal People (2020)") ~ 16,
       title_id %in% c("Over the Garden Wall (2014)") ~ 11,
       TRUE ~ runtimeMinutes
@@ -335,19 +335,15 @@ table_data <-
   )
 ```
 
-
 <br>
 
 ## Plots
-
-<br>
 
 ### Rating Stripes
 
 ```{r plot-trends}
 plot_trends <- function(data){
   n <- data %>% filter(id %% 50 == 0) %>% pull(id)
-  n <- c(n, 0)
   
   rect <- tibble(x1 = c(-Inf, max(data$id)), x2 = c(1, Inf), y1 = -Inf, y2 = Inf)
   
@@ -359,7 +355,7 @@ plot_trends <- function(data){
     geom_rect(data = rect, aes(xmin = x1, xmax = x2, ymin = y1, ymax = y2),
               inherit.aes = FALSE,
               color = "transparent", fill = "white") +
-    scale_x_continuous(expand = c(.0, 0), breaks = c(n, 0), labels = c(as.character(n), ""),
+    scale_x_continuous(expand = c(.0, 0), breaks = c(n, 1), labels = c(as.character(n), ""),
                        limits = c(1, unique(data$max_x))) +
     scale_y_continuous(expand = c(0, 0), limits = c(0, 1.05)) +
     # scale_x_continuous(breaks = n, , labels = c(as.character(n), ""),
@@ -505,10 +501,10 @@ imdb_table <-
   ) %>% 
   ## Titles & Co.
   tab_header(
-    title = md("**What do I binge next?** An detailed overview of the Top 250 TV shows as rated by IMDb users")
+    title = md("**What do I binge next?** A detailed overview of the Top 250 TV shows as rated by IMDb users")
   ) %>% 
   tab_source_note(
-    source_note = md("**Table: Cédric Scherer &bull; Data: IMDb.com**<span style='font-size:7pt;color:grey;'> (Last updated on Oct 26<sup>th</sup> 2020)</span>")
+    source_note = md("**Table: Cédric Scherer &bull; Data: IMDb.com**<span style='font-size:7pt;color:grey;'> (Last updated on November 1<sup>st</sup> 2020)</span>")
   ) %>%
   tab_footnote(
     footnote = md(glue("The line shows the average IMDb rating per season as the show progresses. Each vertical stripe represents one episode colored by the difference to the show' average (normalized). The plots are scaled to a maximum of {unique(table_trends$ratings[[1]]$max_x)} episodes; out of the top 250 only “The Simpsons” crossed that mark.<br>Ranks are compared to a dataset of the IMDb Top 250 TV shows from May 2019.")),
@@ -619,7 +615,7 @@ imdb_table <-
     table_body.hlines.color = "#ededed"
   )
 
-#imdb_table
+imdb_table
 ```
 
 ### Save Table
@@ -629,7 +625,7 @@ imdb_table <-
 #gtsave(imdb_table, "IMDb_Top250.pdf")
 #gtsave(imdb_table, "IMDb_Top250.html", inline_css = TRUE)
 #gtsave(imdb_table, "IMDb_Top250.png", expand = 20)
-#gtsave(imdb_table, "IMDb_Top250.png", vwidth = 2600, vheight = 18000, zoom = 2, delay = 10)
+#gtsave(imdb_table, "IMDb_Top250.png", vwidth = 2600  , vheight = 18000, zoom = 2, delay = 10)
 ```
 
 
