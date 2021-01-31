@@ -3,6 +3,8 @@
 
 The table shows relevant details of the top 250 TV shows as rated by IMDb users. I focussed on displaying the details I and my friends care about: of course the ranking and overall rating but additionally the runtime per episode, genres, number of seasons and episodes, ID of the best episodes. But most importantly—the trend of ratings as the TV show progresses.
 
+_**The table was highlighted as "honorable mention" 🎉**_
+
 ## Top 250:
 ![](./output/IMDb_Top250.png)
 
