@@ -6,7 +6,10 @@ The table shows relevant details of the top 250 TV shows as rated by IMDb users.
 _**[The table was highlighted as "honorable mention" by the jury](https://blog.rstudio.com/2020/12/23/winners-of-the-2020-rstudio-table-contest/) 🎉**_
 
 ## Top 250:
+
+<details><summary>Expand to see the loooong version</summary>
 ![](./output/IMDb_Top250.png)
+</details>
 
 ## Documentaries only:
 ![](./output/IMDb_TopDocumentary.png)
