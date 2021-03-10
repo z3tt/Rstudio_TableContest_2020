@@ -1,5 +1,23 @@
+<h1 style="font-weight:normal" align="center">
+  &nbsp;What do I binge next?<br>An overview of the Best IMDb TV shows&nbsp;
+</h1>
 
-# What do I binge next? An overview of the Best IMDb TV shows
+<div align="center">
+
+&nbsp;&nbsp;&nbsp;:link: [Blog][Blog]&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;:e-mail: [Email][Email]&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;:speech_balloon: [Twitter][Twitter]&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;:art: [Behance][Behance]&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;:necktie: [LinkedIn][LinkedIn]
+
+</div>
+
+<!--
+Quick Link
+-->
+
+[Twitter]:https://twitter.com/CedScherer
+[LinkedIn]:https://www.linkedin.com/in/cedricpscherer/
+[Email]:mailto:info@data-vizard.com
+[Blog]:https://cedricscherer.netlify.com/
+[Portfolio]:https://data-vizard.com/
+[Behance]:https://www.behance.net/cedscherer
 
 The table shows relevant details of the top 250 TV shows as rated by IMDb users. I focussed on displaying the details I and my friends care about: of course the ranking and overall rating but additionally the runtime per episode, genres, number of seasons and episodes, ID of the best episodes. But most importantly—the trend of ratings as the TV show progresses.
 
