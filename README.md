@@ -59,8 +59,15 @@ _**[The table was highlighted as "honorable mention" by the jury](https://blog.r
 
 **Data:** The data is a mixture of scraped data using a modified [Python script](https://github.com/WittmannF/imdb-tv-ratings/blob/master/IMDB_get_ratings.ipynb) (ranks, ratings, votes, year) and data downloaded from the [IMDb dataset interface](https://www.imdb.com/interfaces/) (title basics: original title, genre, runtime). The data was cleaned (e.g. correct wrong runtimes, title spellings etc) and missing entries filled. (However, some series are returned as having 1 season only but have several actually and I didn't find a good workaround yet.)
 
+***
+
 <div align="center">
+  <h4>Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)</h4>
+<div style="width:300px; height:200px">
+<img src=https://camo.githubusercontent.com/00f7814990f36f84c5ea74cba887385d8a2f36be/68747470733a2f2f646f63732e636c6f7564706f7373652e636f6d2f696d616765732f63632d62792d6e632d73612e706e67 alt="" height="42">
+</div>
   <br>
   <a href="https://www.buymeacoffee.com/z3tt" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/guidelines/download-assets-sm-1.svg" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
   <br><br>
 </div>
+
