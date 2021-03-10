@@ -7,8 +7,9 @@ _**[The table was highlighted as "honorable mention" by the jury](https://blog.r
 
 ## Top 250:
 
-<details><summary>Expand to see the loooong version</summary>
-![](./output/IMDb_Top250.png)
+<details>
+  <summary>Expand to see the loooong version</summary>
+  <img src="./output/IMDb_Top250.png"/>
 </details>
 
 ## Documentaries only:
